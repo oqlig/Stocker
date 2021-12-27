@@ -85,6 +85,7 @@ class AppController:
         3 - MACD + RSI .. ( hourly ticks )''')
 
     def __checkStockAvailability(self, stockSymbol):
+        print('''    Processing request...''')
         stock = yf.Ticker(stockSymbol)
         if stock.info['regularMarketPrice'] is None:
             return False
@@ -149,15 +150,35 @@ class AppController:
         clearConsole()
         print('''   Running Algorithm...''')
 
+        timeInterval = ''
+        if self.__interval == '1h':
+            timeInterval = 'h'
+        else:
+            timeInterval = 'd'
+
+        index = df_std.last_valid_index()
+
+        futureDays = [
+            (index + pandas.to_timedelta(1, timeInterval)),
+            (index + pandas.to_timedelta(2, timeInterval)),
+            (index + pandas.to_timedelta(3, timeInterval)),
+            (index + pandas.to_timedelta(4, timeInterval)),
+            (index + pandas.to_timedelta(5, timeInterval)),
+        ]
+
+        if self.__interval == '1h':
+            for i in range(len(futureDays)):
+                if futureDays[i].hour >= 16:
+                    futureDays[i] = futureDays[i] + pandas.to_timedelta(17, 'h')
+
         set_test = tf.convert_to_tensor(df_std.tail(30))
         set_test = tf.reshape(set_test, [1, 30, 8])
         future = self.__modelCNN.predict(set_test).flatten()
 
-        df_std = df_std.append({'Close': future[0]}, ignore_index=True)
-        df_std = df_std.append({'Close': future[8]}, ignore_index=True)
-        df_std = df_std.append({'Close': future[16]}, ignore_index=True)
-        df_std = df_std.append({'Close': future[24]}, ignore_index=True)
-        df_std = df_std.append({'Close': future[32]}, ignore_index=True)
+        futureData = {'Close': [future[0], future[8], future[16], future[24], future[32]]}
+        futureIndex = [futureDays[0], futureDays[1], futureDays[2], futureDays[3], futureDays[4]]
+        df_future = pandas.DataFrame(data=futureData, index=futureIndex)
+        df_std = df_std.append(df_future)
 
         output = self.__dataHandler.denormalizeDataset(df_std.tail(200))
         output = self.__dataHandler.recalculateIndicators(output)
@@ -308,6 +329,20 @@ class AppController:
         figure.add_hline(y=100, col=1, row=3, line_color="#666", line_width=2)
         figure.add_hline(y=55, col=1, row=3, line_color='#336699', line_width=1, line_dash='dash')
         figure.add_hline(y=45, col=1, row=3, line_color='#336699', line_width=1, line_dash='dash')
+
+        if self.__interval == '1h':
+            figure.update_xaxes(
+                rangeslider_visible=True,
+                rangebreaks=[
+                    dict(bounds=["sat", "mon"]),
+                    dict(bounds=[16, 9], pattern="hour"),
+                ]
+            )
+        else:
+            figure.update_xaxes(
+                rangeslider_visible=True,
+                rangebreaks=[ dict(bounds=["sat", "mon"]),]
+            )
 
         layout = go.Layout(
             title=f'{symbol} - Stock Price',
