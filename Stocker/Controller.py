@@ -92,7 +92,7 @@ class AppController:
             return True
 
     def __assignStock(self):
-        print('''    Please enter a 4-digit stock symbol.''')
+        print('''    Please enter a 4-character stock symbol.''')
         stockSymbol = str(input('\n')).upper()
         if self.__checkStockAvailability(stockSymbol=stockSymbol):
             self.__stock = stockSymbol
@@ -147,7 +147,7 @@ class AppController:
         modelConv_MultiHistory = compileAndFit(self.__modelCNN, self.__dataWindow)
 
         clearConsole()
-        print('''   Running Algorithm''')
+        print('''   Running Algorithm...''')
 
         set_test = tf.convert_to_tensor(df_std.tail(30))
         set_test = tf.reshape(set_test, [1, 30, 8])
